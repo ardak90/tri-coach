@@ -1,6 +1,38 @@
 spring:
   application:
     name: tri-coach
+  datasource:
+    # Значения по умолчанию — для локальной разработки с docker compose.
+    # На проде приходят из переменных окружения / Secrets Manager.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/tricoach}
+    username: ${DB_USER:tricoach}
+    password: ${DB_PASSWORD:tricoach}
+    hikari:
+      connection-timeout: 3000   # мс: не висеть вечно, если база недоступна
   jpa:
+    open-in-view: false          # не держим соединение с БД на время рендера ответа
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate         # схему ведёт Flyway, Hibernate только проверяет
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  shutdown: graceful             # дожидаемся текущих запросов при остановке
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true            # /actuator/health/liveness и /readiness
+      group:
+        liveness:
+          include: livenessState          # без базы: падение БД не должно перезапускать приложение
+        readiness:
+          include: readinessState,db      # с базой: нет базы — не принимаем трафик
+  metrics:
+    tags:
+      application: ${spring.application.name}

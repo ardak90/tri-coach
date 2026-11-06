@@ -9,11 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -47,8 +49,21 @@ public class ActivityRepositoryTest {
                 .containsExactlyInAnyOrder(IN_PERIOD_TIME, IN_PERIOD_TIME_2);
     }
 
+    @Test
+    void shouldRejectDuplicateFileHash(){
+        // Given
+        String sameFileHash = FakeHashGenerator.nextFakeHash();
+        activityRepository.saveAndFlush(new Activity(Sport.RUN, IN_PERIOD_TIME, 6000, 10000.0, 145, sameFileHash));
+
+        // When/Then
+        DataIntegrityViolationException ex = assertThrows(DataIntegrityViolationException.class, () -> {
+            activityRepository.saveAndFlush(new Activity(Sport.RUN, IN_PERIOD_TIME_2, 6000, 10000.0, 145, sameFileHash));
+        });
+        assertThat(ex).hasMessageContaining("uq_activities_file_hash");
+    }
+
     private void saveActivityAt(Instant startTime){
         activityRepository
-                .save(new Activity(Sport.RUN, startTime, 6000, 10000.0, 145, FakeHashGenerator.nextFakeHash()));
+                .saveAndFlush(new Activity(Sport.RUN, startTime, 6000, 10000.0, 145, FakeHashGenerator.nextFakeHash()));
     }
 }
