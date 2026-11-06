@@ -1,3 +1,6 @@
 spring:
   application:
     name: tri-coach
+  jpa:
+    hibernate:
+      ddl-auto: validate
