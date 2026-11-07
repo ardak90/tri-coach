@@ -28,3 +28,6 @@ target/
 .env
 *.env.local
 application-local.yaml
+
+ *.fit
+ local-data/
